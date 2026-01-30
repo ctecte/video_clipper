@@ -3,7 +3,8 @@ import axios from 'axios';
 import './App.css';
 
 // Configure Backend URL
-const API_BASE = 'http://localhost:5000';
+// const API_BASE = 'http://localhost:5000';
+const API_BASE = '/api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' or 'youtube'
