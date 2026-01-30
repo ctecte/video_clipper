@@ -22,38 +22,49 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 # In-memory storage for job status (Use Redis/DB in production)
 jobs = {}
 
+# In app.py
+
 def run_processor_background(job_id, video_path):
-    """Runs the heavy AI task in background"""
+    """
+    Runs the heavy AI processing in a background thread.
+    Updates the global 'jobs' dictionary with progress.
+    """
     try:
         jobs[job_id]['status'] = 'processing'
-        jobs[job_id]['progress'] = 0
+        jobs[job_id]['progress'] = 0  # Initialize progress
+
+        # DEFINE THE CALLBACK
+        # This function gets called by VideoProcessor whenever percentage changes
+        def update_progress(p):
+            jobs[job_id]['progress'] = p
+            print(f"Job {job_id} progress: {p}%") # Optional logging
+
+        # PASS THE CALLBACK
+        processor = VideoProcessor(
+            video_path, 
+            OUTPUT_FOLDER, 
+            job_id, 
+            progress_callback=update_progress # <--- Connects the dots
+        )
         
-        # Initialize Processor
-        processor = VideoProcessor(video_path, OUTPUT_FOLDER, job_id)
-        
-        # Run!
-        # Note: You might want to update process() to callback progress
-        # For now, we just update to "completed" at the end
         clips = processor.process()
         
-        # Prepare Result Data
+        # Process results for frontend
         results = []
         for i, clip_path in enumerate(clips):
-            # Extract basic metadata
-            # For the UI, we need the web-accessible URL
             filename = os.path.basename(clip_path)
             results.append({
-                "id": i+1,
-                "url": f"/outputs/{job_id}/{filename}",
-                "filename": filename
+                'id': i + 1,
+                'filename': filename,
+                'url': f"/download/{job_id}/{filename}"
             })
             
         jobs[job_id]['status'] = 'completed'
-        jobs[job_id]['results'] = results
         jobs[job_id]['progress'] = 100
+        jobs[job_id]['results'] = results
         
     except Exception as e:
-        print(f"Job {job_id} Failed: {e}")
+        print(f"Job {job_id} failed: {e}")
         jobs[job_id]['status'] = 'failed'
         jobs[job_id]['error'] = str(e)
 
@@ -131,7 +142,7 @@ def get_status(job_id):
         return jsonify({"error": "Job not found"}), 404
     return jsonify(job)
 
-@app.route('/outputs/<job_id>/<filename>')
+@app.route('/download/<job_id>/<filename>')
 def serve_output(job_id, filename):
     # Serve the clips so the frontend can play them
     return send_from_directory(os.path.join(OUTPUT_FOLDER, job_id), filename)

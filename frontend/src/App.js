@@ -34,6 +34,11 @@ function App() {
       const res = await axios.get(`${API_BASE}/status/${jobId}`);
       setStatus(res.data.status);
       
+      // ✅ ADD THIS BLOCK: Update progress bar if backend sends percentage
+      if (res.data.progress !== undefined) {
+        setUploadProgress(res.data.progress);
+      }
+
       if (res.data.status === 'completed') {
         setResults(res.data.results);
       } else if (res.data.status === 'failed') {
@@ -43,6 +48,7 @@ function App() {
       console.error("Polling error:", err);
     }
   };
+
 
   // 2. Handle File Upload (With Progress & Button Lock)
   const handleUpload = async () => {
@@ -200,23 +206,23 @@ function App() {
             <h2>Processing Video...</h2>
             <div className="status-badge">{status.toUpperCase()}</div>
             
+            {/* PROGRESS BAR (Visual Only) */}
             <div className="progress-container">
-               {/* Show Upload Progress Bar visually if uploading */}
-               {status === 'uploading' && (
-                  <div className="progress-bar-bg">
-                    <div 
-                      className="progress-bar-fill" 
-                      style={{width: `${uploadProgress}%`}}
-                    ></div>
-                  </div>
-               )}
+                {(status === 'uploading' || status === 'processing') && (
+                    <div className="progress-bar-bg">
+                        <div 
+                            className="progress-bar-fill" 
+                            style={{width: `${uploadProgress}%`}}
+                        ></div>
+                    </div>
+                )}
             </div>
-
+            {/* TEXT STATUS (Below the bar) */}
             <p className="subtext">
-              {status === 'uploading' && `Uploading file... ${uploadProgress}%`}
-              {status === 'downloading' && "Downloading from YouTube..."}
-              {status === 'queued' && "Waiting for processor..."}
-              {status === 'processing' && "AI is analyzing laughter (This takes ~2-5 mins)..."}
+                {status === 'uploading' && `Uploading file... ${uploadProgress}%`}
+                {status === 'processing' && `AI analyzing laughter... ${uploadProgress}%`}
+                {status === 'downloading' && "Downloading from YouTube..."}
+                {status === 'queued' && "Waiting for processor..."}
             </p>
           </div>
         )}

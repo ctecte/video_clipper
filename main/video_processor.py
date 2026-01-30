@@ -7,12 +7,12 @@ import ffmpeg
 from transformers import pipeline
 from tqdm import tqdm
 
-seconds_before_laugh_detected = 15 # edit this according to how much context desired
-desired_clip_duration = 30 # edit this for clip duration
-
+seconds_before_laugh_detected = 20 # edit this according to how much context desired
+desired_clip_duration = 40 # edit this for clip duration
 
 class VideoProcessor:
-    def __init__(self, video_path, output_folder, job_id):
+    def __init__(self, video_path, output_folder, job_id, progress_callback=None):
+        self.progress_callback = progress_callback
         self.video_path = video_path
         self.output_folder = os.path.join(output_folder, job_id)
         self.job_id = job_id
@@ -37,6 +37,9 @@ class VideoProcessor:
         """Extract audio from video file to WAV if not exists"""
         if not os.path.exists(self.audio_path):
             print("Extracting audio from video...")
+            # Signal progress: Extraction started (5%)
+            if self.progress_callback: self.progress_callback(5)
+            
             try:
                 # Use moviepy for reliable extraction
                 video = VideoFileClip(self.video_path)
@@ -72,9 +75,17 @@ class VideoProcessor:
         print(f"Scanning {len(timestamps)} segments (Aggressive Mode)...")
         print("-" * 60)
         
-        for start in tqdm(timestamps, desc="Scanning", unit="seg"):
-            end = start + window_size
+        # FIX: Added 'enumerate' here so 'i' exists for calculation
+        for i, start in enumerate(tqdm(timestamps, desc="Scanning", unit="seg")):
             
+            # --- PROGRESS REPORTING ---
+            if self.progress_callback:
+                # Map scanning loop to 10% -> 90% of total progress
+                percent = 10 + int((i / len(timestamps)) * 80)
+                self.progress_callback(percent)
+            # --------------------------
+
+            end = start + window_size
             start_sample = int(start * sr)
             end_sample = int(end * sr)
             if end_sample > len(y): break
@@ -106,7 +117,6 @@ class VideoProcessor:
                         score += r['score']
                 
                 # LOWER THRESHOLD: 0.02 (2%)
-                # If 2% of the audio signature is laughter, we want it.
                 if score > 0.02:
                     min_sec = f"{start // 60}:{start % 60:02d}"
                     bar = "█" * int(score * 100) # Scale bar for visibility
@@ -165,6 +175,10 @@ class VideoProcessor:
         print("="*50 + "\n")
 
         print(f"Cutting {len(top_clips)} clips...")
+        
+        # Signal Cutting Started (90%)
+        if self.progress_callback: self.progress_callback(90)
+
         output_clips = []
         
         # Get duration safely
