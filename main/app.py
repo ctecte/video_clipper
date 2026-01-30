@@ -6,6 +6,9 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import yt_dlp
+import shutil
+import time
+import gc
 
 # Import your existing processor
 from video_processor import VideoProcessor
@@ -171,6 +174,54 @@ def get_status(job_id):
 def serve_output(job_id, filename):
     # Serve the clips so the frontend can play them
     return send_from_directory(os.path.join(OUTPUT_FOLDER, job_id), filename)
+
+@app.route('/cleanup/<job_id>', methods=['POST'])
+def cleanup_job(job_id):
+    print(f"🧹 Cleaning up job: {job_id}")
+    gc.collect() # Force close handles
+
+    output_dir = os.path.join(OUTPUT_FOLDER, job_id)
+    
+    # 1. DELETE FILES INDIVIDUALLY
+    if os.path.exists(output_dir):
+        for filename in os.listdir(output_dir):
+            file_path = os.path.join(output_dir, filename)
+            try:
+                # Try to rename first (breaks some locks)
+                trash_path = os.path.join(output_dir, f"trash_{filename}")
+                os.rename(file_path, trash_path)
+                os.remove(trash_path)
+            except Exception as e:
+                # If rename fails, try direct delete
+                try:
+                    os.remove(file_path)
+                except Exception as e2:
+                    print(f"   ❌ Failed to delete {filename}: {e2}")
+
+        # 2. DELETE EMPTY FOLDER
+        for attempt in range(3):
+            try:
+                os.rmdir(output_dir)
+                print("   ✅ Output folder deleted")
+                break
+            except OSError:
+                print(f"   ⏳ Folder still locked/not empty (Attempt {attempt+1})")
+                time.sleep(1)
+            
+    # 3. DELETE SOURCE
+    for f in os.listdir(UPLOAD_FOLDER):
+        if f.startswith(job_id):
+            try:
+                os.remove(os.path.join(UPLOAD_FOLDER, f))
+                print(f"   ✅ Deleted source file: {f}")
+            except Exception as e:
+                print(f"   ❌ Error deleting source: {e}")
+
+    if job_id in jobs:
+        del jobs[job_id]
+
+    return jsonify({"status": "cleaned"})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

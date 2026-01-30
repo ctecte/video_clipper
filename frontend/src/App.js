@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import './App.css';
 
@@ -20,16 +20,38 @@ function App() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // 1. Polling Logic: Check status every 2 seconds
-  useEffect(() => {
-    let interval;
-    if (jobId && status !== 'completed' && status !== 'failed') {
-      interval = setInterval(checkStatus, 2000);
+  // --- 1. CLEANUP UTILITY ---
+  // We define this first so it can be used by reset and the effect hook
+  const cleanupSession = useCallback((id) => {
+    if (!id) return;
+    try {
+      // Use fire-and-forget for speed
+      axios.post(`${API_BASE}/cleanup/${id}`).catch(err => console.error(err)); 
+    } catch (err) {
+      console.error("Cleanup failed:", err);
     }
-    return () => clearInterval(interval);
-  }, [jobId, status]);
+  }, []);
 
-  const checkStatus = async () => {
+  // --- 2. RESET FUNCTION ---
+  // Consolidated into one single declaration
+  const reset = () => {
+    // Trigger cleanup before clearing state
+    if (jobId) cleanupSession(jobId);
+
+    setJobId(null);
+    setStatus(null);
+    setResults([]);
+    setFile(null);
+    setYoutubeUrl('');
+    setError('');
+    setUploading(false);
+    setUploadProgress(0);
+  };
+
+  // --- 3. POLLING LOGIC ---
+  const checkStatus = useCallback(async () => {
+    if (!jobId) return;
+
     try {
       const res = await axios.get(`${API_BASE}/status/${jobId}`);
       setStatus(res.data.status);
@@ -47,9 +69,32 @@ function App() {
     } catch (err) {
       console.error("Polling error:", err);
     }
-  };
+  }, [jobId]);
 
-  // 2. Handle File Upload
+  // Effect: Run Polling
+  useEffect(() => {
+    let interval;
+    if (jobId && status !== 'completed' && status !== 'failed') {
+      interval = setInterval(checkStatus, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [jobId, status, checkStatus]);
+
+  // Effect: Handle Browser Tab Close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (jobId) {
+        // navigator.sendBeacon is reliable for page exits
+        navigator.sendBeacon(`${API_BASE}/cleanup/${jobId}`);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [jobId]);
+
+
+  // --- 4. ACTION HANDLERS ---
   const handleUpload = async () => {
     if (!file) return alert("Please select a file!");
     if (!file.name.toLowerCase().endsWith('.mp4')) {
@@ -83,7 +128,6 @@ function App() {
     }
   };
 
-  // 3. Handle YouTube
   const handleYoutube = async () => {
     if (!youtubeUrl) return alert("Enter a URL!");
     
@@ -101,18 +145,6 @@ function App() {
       setError(err.response?.data?.error || "YouTube download failed.");
       setUploading(false);
     }
-  };
-
-  // 4. Reset App
-  const reset = () => {
-    setJobId(null);
-    setStatus(null);
-    setResults([]);
-    setFile(null);
-    setYoutubeUrl('');
-    setError('');
-    setUploading(false);
-    setUploadProgress(0);
   };
 
   return (
@@ -216,7 +248,6 @@ function App() {
             <p className="subtext">
               {status === 'uploading' && `Uploading file... ${uploadProgress}%`}
               {status === 'processing' && `AI analyzing laughter... ${uploadProgress}%`}
-              {/* 👇 UPDATED LINE 👇 */}
               {status === 'downloading' && `Downloading from YouTube... ${uploadProgress}%`}
               {status === 'queued' && "Waiting for processor..."}
               {status === 'initializing' && "Initializing job..."}
