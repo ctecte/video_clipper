@@ -8,7 +8,8 @@ from transformers import pipeline
 from tqdm import tqdm
 
 seconds_before_laugh_detected = 15 # edit this according to how much context desired
-clip_duration = 30 # edit this for clip duration
+desired_clip_duration = 30 # edit this for clip duration
+
 
 class VideoProcessor:
     def __init__(self, video_path, output_folder, job_id):
