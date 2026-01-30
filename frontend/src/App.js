@@ -203,7 +203,7 @@ function App() {
             <div className="status-badge">{status ? status.toUpperCase() : 'LOADING...'}</div>
             
             <div className="progress-container">
-                {(status === 'uploading' || status === 'processing') && (
+                {(status === 'uploading' || status === 'processing' || status === 'downloading') && (
                     <div className="progress-bar-bg">
                         <div 
                             className="progress-bar-fill" 
@@ -214,11 +214,12 @@ function App() {
             </div>
             
             <p className="subtext">
-                {status === 'uploading' && `Uploading file... ${uploadProgress}%`}
-                {status === 'processing' && `AI analyzing laughter... ${uploadProgress}%`}
-                {status === 'downloading' && "Downloading from YouTube..."}
-                {status === 'queued' && "Waiting for processor..."}
-                {status === 'initializing' && "Initializing job..."}
+              {status === 'uploading' && `Uploading file... ${uploadProgress}%`}
+              {status === 'processing' && `AI analyzing laughter... ${uploadProgress}%`}
+              {/* 👇 UPDATED LINE 👇 */}
+              {status === 'downloading' && `Downloading from YouTube... ${uploadProgress}%`}
+              {status === 'queued' && "Waiting for processor..."}
+              {status === 'initializing' && "Initializing job..."}
             </p>
           </div>
         )}

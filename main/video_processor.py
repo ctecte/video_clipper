@@ -116,8 +116,8 @@ class VideoProcessor:
                     if any(label in r['label'] for label in funny_labels):
                         score += r['score']
                 
-                # LOWER THRESHOLD: 0.02 (2%)
-                if score > 0.02:
+                # LOWER THRESHOLD: 0.01 (1%)
+                if score > 0.01:
                     min_sec = f"{start // 60}:{start % 60:02d}"
                     bar = "█" * int(score * 100) # Scale bar for visibility
                     tqdm.write(f"{min_sec:<10} | {score:.3f}      | {bar}")

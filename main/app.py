@@ -104,17 +104,41 @@ def process_youtube():
     url = data.get('url')
     if not url:
         return jsonify({"error": "No URL provided"}), 400
-        
-    job_id = str(uuid.uuid4())
     
+    job_id = str(uuid.uuid4())
+
     # 1. Download with yt-dlp
     def download_and_process():
+        # --- NEW: Progress Hook function ---
+        def progress_hook(d):
+            if d['status'] == 'downloading':
+                try:
+                    # yt-dlp provides downloaded_bytes and total_bytes
+                    downloaded = d.get('downloaded_bytes', 0)
+                    total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
+                    
+                    if total > 0:
+                        percent = int((downloaded / total) * 100)
+                        jobs[job_id]['progress'] = percent
+                        print(f"[HOOK] Job {job_id}: {percent}%")  # Debug log
+                    
+                except Exception as e:
+                    print(f"Progress hook error: {e}")
+                    pass
+            elif d['status'] == 'finished':
+                jobs[job_id]['progress'] = 100
+                print(f"[HOOK] Download finished for {job_id}")
+
         try:
             jobs[job_id]['status'] = 'downloading'
+            jobs[job_id]['progress'] = 0
             
             ydl_opts = {
                 'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
                 'outtmpl': os.path.join(UPLOAD_FOLDER, f"{job_id}_%(title)s.%(ext)s"),
+                'progress_hooks': [progress_hook],  # <--- Add the hook here
+                'quiet': True,
+                'no_warnings': True
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -125,10 +149,11 @@ def process_youtube():
             run_processor_background(job_id, video_path)
             
         except Exception as e:
+            print(f"Download Error: {e}")
             jobs[job_id]['status'] = 'failed'
             jobs[job_id]['error'] = str(e)
 
-    jobs[job_id] = {"status": "initializing", "type": "youtube"}
+    jobs[job_id] = {"status": "initializing", "type": "youtube", "progress": 0}
     
     thread = threading.Thread(target=download_and_process)
     thread.start()
