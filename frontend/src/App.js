@@ -34,7 +34,7 @@ function App() {
       const res = await axios.get(`${API_BASE}/status/${jobId}`);
       setStatus(res.data.status);
       
-      // ✅ ADD THIS BLOCK: Update progress bar if backend sends percentage
+      // Update progress bar if backend sends percentage
       if (res.data.progress !== undefined) {
         setUploadProgress(res.data.progress);
       }
@@ -49,12 +49,9 @@ function App() {
     }
   };
 
-
-  // 2. Handle File Upload (With Progress & Button Lock)
+  // 2. Handle File Upload
   const handleUpload = async () => {
     if (!file) return alert("Please select a file!");
-    
-    // Check extension
     if (!file.name.toLowerCase().endsWith('.mp4')) {
       return alert("Only .mp4 files are allowed!");
     }
@@ -64,7 +61,7 @@ function App() {
 
     try {
       setError('');
-      setUploading(true); // Lock the button
+      setUploading(true);
       setStatus('uploading');
       setUploadProgress(0);
 
@@ -77,8 +74,7 @@ function App() {
 
       setJobId(res.data.job_id);
       setStatus('queued');
-      setUploading(false); // Unlock (technically UI switches to status view anyway)
-      
+      setUploading(false);
     } catch (err) {
       console.error(err);
       setStatus(null);
@@ -93,7 +89,7 @@ function App() {
     
     try {
       setError('');
-      setUploading(true); // Reuse uploading lock for generic loading
+      setUploading(true);
       setStatus('initializing');
       
       const res = await axios.post(`${API_BASE}/youtube`, { url: youtubeUrl });
@@ -128,7 +124,7 @@ function App() {
 
       <div className="container">
         
-        {/* INPUT SECTION (Hidden if job exists) */}
+        {/* INPUT SECTION */}
         {!jobId && (
           <div className="card input-section">
             <div className="tabs">
@@ -183,7 +179,7 @@ function App() {
                     onClick={handleYoutube} 
                     disabled={!youtubeUrl || uploading}
                   >
-                    {uploading ? "Starting..." : "Start Download"}
+                    {uploading ? "Starting..." : "Download & Process"}
                   </button>
                 </div>
               )}
@@ -194,7 +190,7 @@ function App() {
         {/* ERROR MESSAGE */}
         {error && (
           <div className="error-banner">
-            ❌ {error} 
+            <span>❌ {error}</span>
             <button className="retry-btn" onClick={reset}>Try Again</button>
           </div>
         )}
@@ -204,9 +200,8 @@ function App() {
           <div className="card status-card">
             <div className="loader"></div>
             <h2>Processing Video...</h2>
-            <div className="status-badge">{status.toUpperCase()}</div>
+            <div className="status-badge">{status ? status.toUpperCase() : 'LOADING...'}</div>
             
-            {/* PROGRESS BAR (Visual Only) */}
             <div className="progress-container">
                 {(status === 'uploading' || status === 'processing') && (
                     <div className="progress-bar-bg">
@@ -217,12 +212,13 @@ function App() {
                     </div>
                 )}
             </div>
-            {/* TEXT STATUS (Below the bar) */}
+            
             <p className="subtext">
                 {status === 'uploading' && `Uploading file... ${uploadProgress}%`}
                 {status === 'processing' && `AI analyzing laughter... ${uploadProgress}%`}
                 {status === 'downloading' && "Downloading from YouTube..."}
                 {status === 'queued' && "Waiting for processor..."}
+                {status === 'initializing' && "Initializing job..."}
             </p>
           </div>
         )}
@@ -246,9 +242,11 @@ function App() {
                   </div>
                   <div className="clip-info">
                     <h3>Clip #{clip.id}</h3>
-                    <p className="filename">{clip.filename}</p>
+                    <p className="filename" title={clip.filename}>{clip.filename}</p>
                     <a href={`${API_BASE}${clip.url}`} download>
-                      <button className="download-btn">⬇ Download Clip</button>
+                      <button className="download-btn">
+                        <span>⬇</span> Download Clip
+                      </button>
                     </a>
                   </div>
                 </div>
