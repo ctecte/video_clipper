@@ -67,7 +67,7 @@ def upload_file():
     
     # security reasons. Can allow .mov .avi also but since project specified export in mp4 then mp4 it is
     if not file.filename.endswith('.mp4'):
-        return jsonify({"error": "Only mp4 supported"})
+        return jsonify({"error": "Only mp4 supported"}), 400
     
     job_id = str(uuid.uuid4())
     filename = secure_filename(file.filename)
