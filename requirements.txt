@@ -1,3 +1,5 @@
+--find-links https://download.pytorch.org/whl/cu121/torch_stable.html
+torch
 flask==3.0.0
 flask-cors==4.0.0
 yt-dlp
@@ -7,12 +9,7 @@ moviepy<2.0
 ffmpeg-python==0.2.0
 scipy>=1.11.3
 transformers>=4.48.0
-torch>=2.2.0
-torchaudio>=2.2.0
 tqdm
 shutil
 
-# Node.js
-# npm install afterwards
-# npm install axios also
 
