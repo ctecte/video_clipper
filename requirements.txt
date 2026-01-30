@@ -11,3 +11,7 @@ torch>=2.2.0
 torchaudio>=2.2.0
 tqdm
 
+# Node.js
+# npm install afterwards
+# npm install axios also
+

@@ -7,6 +7,9 @@ import ffmpeg
 from transformers import pipeline
 from tqdm import tqdm
 
+seconds_before_laugh_detected = 15 # edit this according to how much context desired
+clip_duration = 30 # edit this for clip duration
+
 class VideoProcessor:
     def __init__(self, video_path, output_folder, job_id):
         self.video_path = video_path
@@ -171,8 +174,8 @@ class VideoProcessor:
         
         for i, clip in enumerate(top_clips):
             # Window: +/- 20s
-            start = max(0, clip['time'] - 20)
-            end = min(start + 60, full_duration)
+            start = max(0, clip['time'] - seconds_before_laugh_detected)
+            end = min(start + desired_clip_duration, full_duration)
             
             out_path = os.path.join(self.output_folder, f"clip_{i+1}.mp4")
             

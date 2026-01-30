@@ -3,3 +3,8 @@ main/venv
 **/*.mp4
 **/**__pycache__**
 **/*.wav
+frontend/node_modules/
+frontend/build/
+**/test_outputs
+**/uploads
+**/outputs    
