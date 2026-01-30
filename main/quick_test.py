@@ -19,9 +19,8 @@ def main():
     
     # Show results
     print(f"\n✅ Done! Generated {len(clips)} clips")
-    for clip in clips:
-        print(f"  Clip {clip['clip_number']}: {clip['start_time']}-{clip['end_time']} "
-              f"(E:{clip['energy_raw']:.1f}, H:{clip['humor_raw']:.1f})")
-
+    for i, clip_path in enumerate(clips):
+        print(f"  Clip {i+1}: {clip_path}")
+        
 if __name__ == "__main__":
     main()
