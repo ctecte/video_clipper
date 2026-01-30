@@ -3,8 +3,8 @@ import axios from 'axios';
 import './App.css';
 
 // Configure Backend URL
-// const API_BASE = 'http://localhost:5000';
-const API_BASE = '/api';
+const API_BASE = 'http://192.168.1.22:5000';
+// const API_BASE = '/api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' or 'youtube'
@@ -147,6 +147,30 @@ function App() {
       setUploading(false);
     }
   };
+  // Add this helper function inside your App component
+  const handleDownload = async (url, filename) => {
+    try {
+      const response = await axios.get(url, {
+        responseType: 'blob', // Important: Fetch as binary data
+      });
+      
+      // Create a temporary URL for the blob
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', filename); // Force download with specific name
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Download failed. Please try again.");
+    }
+  };
+
 
   return (
     <div className="App">
@@ -273,15 +297,18 @@ function App() {
                       Your browser does not support the video tag.
                     </video>
                   </div>
-                  <div className="clip-info">
-                    <h3>Clip #{clip.id}</h3>
-                    <p className="filename" title={clip.filename}>{clip.filename}</p>
-                    <a href={`${API_BASE}${clip.url}`} download>
-                      <button className="download-btn">
+                    <div className="clip-info">
+                      <h3>Clip #{clip.id}</h3>
+                      <p className="filename" title={clip.filename}>{clip.filename}</p>
+                      
+                      {/* Just the button, calling the function directly */}
+                      <button 
+                        className="download-btn"
+                        onClick={() => handleDownload(`${API_BASE}${clip.url}`, clip.filename)}
+                      >
                         <span>⬇</span> Download Clip
                       </button>
-                    </a>
-                  </div>
+                    </div>
                 </div>
               ))}
             </div>
