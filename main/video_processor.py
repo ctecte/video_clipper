@@ -189,5 +189,6 @@ class VideoProcessor:
             except Exception as e:
                 print(f"❌ Error cutting clip {i+1}: {e}")
                 print(f"   Command likely failed. Ensure 'ffmpeg' is in PATH.")
-            
+
+        print("Job completed!")    
         return output_clips
