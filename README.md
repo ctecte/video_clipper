@@ -1,7 +1,7 @@
 # Development Process and decisions
 To begin, I first attempted to use a few features to decide "best", which I define as humor and funny moments
 
-##$ Audio Peaks
+### Audio Peaks
 Starting with audio peaks, I tried to score certain context based on high peaks and energy.
 
 that failed as it just clipped moments where people talked loudly or got excited
