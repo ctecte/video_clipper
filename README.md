@@ -7,7 +7,7 @@ Starting with audio peaks, I tried to score certain context based on high peaks 
 that failed as it just clipped moments where people talked loudly or got excited
 
 
-#$# Audio Transcription
+### Audio Transcription
 Next, I tried audio transcription for better context. I experimented with BERT (Bidirectional Encoded Regression Transformer) which could in theory recognize humor and sarcasm etc from subtitles. 
 
 the output was not really interesting among multiple videos I tested with. I explicitly looked for keywords like "lol", "no way", "omg" but it did not improve performance by noticable means. 
