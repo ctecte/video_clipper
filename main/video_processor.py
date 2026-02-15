@@ -5,7 +5,6 @@ import torch
 from moviepy.editor import VideoFileClip
 import ffmpeg
 from transformers import pipeline
-from tqdm import tqdm
 
 seconds_before_laugh_detected = 20 # edit this according to how much context desired
 desired_clip_duration = 40 # edit this for clip duration
@@ -72,16 +71,25 @@ class VideoProcessor:
         step_size = 2     # Dense overlap
         
         timestamps = list(range(0, int(duration) - window_size, step_size))
-        print(f"Scanning {len(timestamps)} segments (Aggressive Mode)...")
+        total_segments = len(timestamps)
+        print(f"Scanning {total_segments} segments (Aggressive Mode)...")
         print("-" * 60)
         
-        # FIX: Added 'enumerate' here so 'i' exists for calculation
-        for i, start in enumerate(tqdm(timestamps, desc="Scanning", unit="seg")):
+        # Track last logged percentage to avoid spam
+        last_logged_pct = -1
+        
+        for i, start in enumerate(timestamps):
             
             # --- PROGRESS REPORTING ---
             if self.progress_callback:
                 # Map scanning loop to 10% -> 90% of total progress
-                percent = 10 + int((i / len(timestamps)) * 80)
+                percent = 10 + int((i / total_segments) * 80)
+                
+                # Only log every 5% to reduce output
+                if percent >= last_logged_pct + 5:
+                    print(f"Scanning progress: {percent}% ({i}/{total_segments} segments)")
+                    last_logged_pct = percent
+                    
                 self.progress_callback(percent)
             # --------------------------
 
@@ -118,10 +126,7 @@ class VideoProcessor:
                 
                 # LOWER THRESHOLD: 0.001 (0.1%)
                 if score > 0.001:
-                    min_sec = f"{start // 60}:{start % 60:02d}"
-                    bar = "█" * int(score * 100) # Scale bar for visibility
-                    tqdm.write(f"{min_sec:<10} | {score:.3f}      | {bar}")
-                    
+                    # Store candidate (removed verbose logging to prevent systemd journal overflow)
                     candidates.append({
                         'time': start + (window_size/2), 
                         'laughter_score': score,
@@ -131,10 +136,14 @@ class VideoProcessor:
             except Exception as e:
                 continue
 
+        print(f"Scanning complete! Found {len(candidates)} candidate moments")
         return candidates
 
     def process(self):
         """Main execution flow"""
+        print(f"Starting video processing for job {self.job_id}")
+        print(f"Video path: {self.video_path}")
+        
         self.extract_audio()
         
         candidates = self.find_candidates()
@@ -183,8 +192,15 @@ class VideoProcessor:
         
         # Get duration safely
         try:
-            full_duration = VideoFileClip(self.video_path).duration
-        except:
+            print("Getting video duration...")
+            video_clip = VideoFileClip(self.video_path)
+            full_duration = video_clip.duration
+            video_clip.close()
+            print(f"Video duration: {full_duration}s")
+        except Exception as e:
+            print(f"⚠️ Could not get video duration: {e}")
+            import traceback
+            print(traceback.format_exc())
             full_duration = 99999
         
         for i, clip in enumerate(top_clips):
@@ -194,19 +210,43 @@ class VideoProcessor:
             
             out_path = os.path.join(self.output_folder, f"clip_{i+1}.mp4")
             
+            print(f"\nAttempting to cut clip {i+1}:")
+            print(f"  Start: {start:.2f}s, End: {end:.2f}s, Duration: {end-start:.2f}s")
+            print(f"  Output: {out_path}")
+            
             try:
                 (
                     ffmpeg
                     .input(self.video_path, ss=start, t=end-start)
-                    .output(out_path, codec='copy', loglevel='quiet')
+                    .output(out_path, codec='copy', loglevel='error')
                     .overwrite_output()
-                    .run()
+                    .run(capture_stdout=True, capture_stderr=True)
                 )
-                output_clips.append(out_path)
-                print(f"✅ Saved: {out_path}")
+                
+                # Verify the file was created
+                if os.path.exists(out_path):
+                    file_size = os.path.getsize(out_path)
+                    print(f"✅ Saved: {out_path} ({file_size} bytes)")
+                    # Store timing info with the clip
+                    output_clips.append({
+                        'path': out_path,
+                        'start_time': start,
+                        'end_time': end
+                    })
+                else:
+                    print(f"❌ File was not created: {out_path}")
+                    
+            except ffmpeg.Error as e:
+                print(f"❌ FFmpeg error cutting clip {i+1}:")
+                print(f"   stdout: {e.stdout.decode() if e.stdout else 'None'}")
+                print(f"   stderr: {e.stderr.decode() if e.stderr else 'None'}")
             except Exception as e:
-                print(f"❌ Error cutting clip {i+1}: {e}")
-                print(f"   Command likely failed. Ensure 'ffmpeg' is in PATH.")
+                import traceback
+                print(f"❌ Unexpected error cutting clip {i+1}: {e}")
+                print(traceback.format_exc())
 
-        print("Job completed!")    
+        print(f"\n{'='*50}")
+        print(f"Job completed! Generated {len(output_clips)} out of {len(top_clips)} clips")
+        print(f"{'='*50}\n")
+        
         return output_clips

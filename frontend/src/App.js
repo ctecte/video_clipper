@@ -299,6 +299,11 @@ function App() {
                   </div>
                     <div className="clip-info">
                       <h3>Clip #{clip.id}</h3>
+                      {clip.timing && (
+                        <p className="timing" style={{fontSize: '14px', color: '#666', margin: '8px 0'}}>
+                          ⏱️ {clip.timing}
+                        </p>
+                      )}
                       <p className="filename" title={clip.filename}>{clip.filename}</p>
                       
                       {/* Just the button, calling the function directly */}
